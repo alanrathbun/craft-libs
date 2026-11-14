@@ -75,17 +75,20 @@ fn tokenize(input: &str) -> Result<Vec<Tok>, UnitError> {
                 let negative = c == '⁻';
                 let mut digit = superscript_digit(c);
                 let mut n = 0i32;
-                let mut any = false;
+                let mut digits = 0;
                 if digit.is_none() {
                     digit = chars.next_if(|&d| superscript_digit(d).is_some()).and_then(superscript_digit);
                 }
                 while let Some(d) = digit {
-                    any = true;
+                    digits += 1;
                     n = push_digit(n, d)?;
                     digit = chars.next_if(|&d| superscript_digit(d).is_some()).and_then(superscript_digit);
                 }
-                if !any {
+                if digits == 0 {
                     return syntax("superscript sign without digits");
+                }
+                if digits > 1 {
+                    return syntax("ambiguous superscript: write a multi-digit power as ^n");
                 }
                 toks.push(Tok::Sup(if negative { -n } else { n }));
             }
@@ -162,18 +165,26 @@ impl Parser {
         tok
     }
 
-    /// `product := factor (('*' | '/' | <juxtaposition>) factor)*`, evaluated left to right.
+    /// `product := factor (('*' | <juxtaposition>) factor)* ('/' factor)*`, left to right.
+    ///
+    /// Once a `/` has appeared at this level, only further `/` may follow: a multiplication
+    /// after a division is ambiguous (`J/mol K`) and is rejected.
     fn product(&mut self, depth: u32) -> Result<Term, UnitError> {
         let mut acc = self.factor(depth)?;
+        let mut divided = false;
         loop {
             match self.peek() {
-                Some(Tok::Star) => {
-                    self.pos += 1;
-                    acc = acc.mul(self.factor(depth)?)?;
-                }
                 Some(Tok::Slash) => {
                     self.pos += 1;
                     acc = acc.div(self.factor(depth)?)?;
+                    divided = true;
+                }
+                Some(Tok::Star | Tok::Ident(_) | Tok::LParen) if divided => {
+                    return syntax("ambiguous unit: put the denominator in parentheses, e.g. J/(mol·K)");
+                }
+                Some(Tok::Star) => {
+                    self.pos += 1;
+                    acc = acc.mul(self.factor(depth)?)?;
                 }
                 Some(Tok::Ident(_) | Tok::LParen) => acc = acc.mul(self.factor(depth)?)?,
                 _ => return Ok(acc),
@@ -249,8 +260,10 @@ impl Parser {
 /// Parse a unit expression into its SI [`Scale`].
 ///
 /// Grammar: units joined by `*`, `·`, `⋅` or whitespace (multiply) and `/` (divide), all
-/// evaluated left to right, so `J/mol K` is `J·K/mol`. A unit takes one integer power, written
-/// `^n`, `^-n` or with superscripts (`²`, `³`, `⁻¹`). Parentheses group, nested at most 16
+/// evaluated left to right. Once a `/` has appeared, a following unit joined by `*`, `·`, `⋅` or
+/// a space (as in `J/mol K`) is ambiguous and is [`UnitError::Syntax`]: write `J/(mol·K)`.
+/// Repeated division (`m/s/s`) is fine. A unit takes one integer power, written `^n`, `^-n` or
+/// with a single superscript digit (`²`, `³`, `⁻¹`). Parentheses group, nested at most 16
 /// deep. A bare `1` is allowed as a unit (`1/s`). Input longer than 256 bytes, or empty, is
 /// [`UnitError::Syntax`].
 ///

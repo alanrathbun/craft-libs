@@ -164,20 +164,36 @@ fn negative_exponents_and_extended_superscripts() {
     assert_eq!(parse_unit("s^-1").unwrap().dim, inv.dim);
     assert_eq!(parse_unit("s⁻¹").unwrap().dim, inv.dim);
     assert_eq!(parse_unit("m⁻²").unwrap().dim.exp[0], -2);
-    assert_eq!(parse_unit("m¹²").unwrap().dim.exp[0], 12);
-    // A run of superscript digits is one multi-digit exponent, as in `m¹²`.
-    assert_eq!(parse_unit("m²³").unwrap().dim.exp[0], 23);
+    assert_eq!(parse_unit("m⁻³").unwrap().dim.exp[0], -3);
+    assert_eq!(parse_unit("m⁴").unwrap().dim.exp[0], 4);
     assert_eq!(parse_unit("1").unwrap().dim, craft_units::Dim::ONE);
 }
 
 #[test]
-fn division_is_left_to_right() {
-    let a = parse_unit("J/mol K").unwrap();
-    let b = parse_unit("J*K/mol").unwrap();
-    assert_eq!(a.dim, b.dim);
-    let c = parse_unit("m/s/s").unwrap();
-    assert_eq!(c.dim.exp, [1, 0, -2, 0, 0, 0, 0, 0]);
-    assert_eq!(parse_unit("m/s*s").unwrap().dim, craft_units::Dim::LENGTH);
+fn multiplication_after_division_is_ambiguous() {
+    for expr in ["J/mol K", "W/m·K", "W/m*K", "W/m⋅K", "kg/m s", "m/s (m)", "m/s/s K", "(m/s)/s*K"] {
+        match parse_unit(expr) {
+            Err(UnitError::Syntax(msg)) => assert!(msg.contains("ambiguous"), "{expr}: {msg}"),
+            other => panic!("{expr:?} gave {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn division_forms_that_stay_legal() {
+    let molar = parse_unit("J*K/mol").unwrap().dim;
+    let mut want = parse_unit("J").unwrap().dim.div(parse_unit("mol").unwrap().dim).unwrap();
+    want = want.div(craft_units::Dim::TEMPERATURE).unwrap();
+    assert_eq!(parse_unit("J/(mol K)").unwrap().dim, want);
+    assert_eq!(parse_unit("J/(mol·K)").unwrap().dim, want);
+    assert_ne!(molar, want);
+    assert_eq!(parse_unit("m/s/s").unwrap().dim.exp, [1, 0, -2, 0, 0, 0, 0, 0]);
+    assert_eq!(parse_unit("N/m^2").unwrap().dim, parse_unit("Pa").unwrap().dim);
+    assert_eq!(parse_unit("kg/m³").unwrap().dim.exp, [-3, 1, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(parse_unit("(m/s)*s").unwrap().dim, craft_units::Dim::LENGTH);
+    assert_eq!(parse_unit("(m/s) s").unwrap().dim, craft_units::Dim::LENGTH);
+    assert_eq!(parse_unit("N*m/s").unwrap().dim, parse_unit("W").unwrap().dim);
+    assert_eq!(parse_unit("N m/s").unwrap().dim, parse_unit("W").unwrap().dim);
 }
 
 #[test]
@@ -203,6 +219,9 @@ fn syntax_errors() {
         "m^-",
         "m^2^3",
         "m²^2",
+        "m¹²",
+        "m²³",
+        "m⁻¹²",
         "m^2²",
         "2",
         "2m",

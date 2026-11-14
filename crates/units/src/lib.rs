@@ -12,10 +12,12 @@
 
 mod catalog;
 mod dim;
+mod format;
 mod parse;
 mod quantity;
 
 pub use catalog::{CATALOG, Scale, UnitDef, lookup};
 pub use dim::Dim;
+pub use format::{Formatted, Precision, UnitSystem, format, natural_unit};
 pub use parse::parse_unit;
 pub use quantity::{Quantity, UnitError};

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum UnitError {
     /// Two quantities of different dimensions were added or subtracted.
-    #[error("dimension mismatch: {left:?} versus {right:?}")]
+    #[error("can't combine {left} with {right}")]
     Mismatch {
         /// Dimension of the left operand.
         left: Dim,
@@ -24,7 +24,7 @@ pub enum UnitError {
     #[error("dimension would have a fractional exponent")]
     Fractional,
     /// A dimensionless quantity was required.
-    #[error("expected a dimensionless quantity, found {0:?}")]
+    #[error("expected a dimensionless quantity, found {0}")]
     NotDimensionless(Dim),
     /// A unit name is not in the catalog.
     #[error("unknown unit `{0}`")]

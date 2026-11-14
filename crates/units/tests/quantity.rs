@@ -145,3 +145,25 @@ proptest! {
         prop_assert_eq!(a.mul(b).unwrap().div(b), Some(a));
     }
 }
+
+#[test]
+fn dim_display_is_si_base_composition() {
+    assert_eq!(Dim::ONE.to_string(), "1");
+    assert_eq!(Dim::LENGTH.to_string(), "m");
+    assert_eq!(Dim::MASS.to_string(), "kg");
+    assert_eq!(Dim::ANGLE.to_string(), "rad");
+    assert_eq!(Dim { exp: [-1, 1, -2, 0, 0, 0, 0, 0] }.to_string(), "kg/(m·s²)");
+    assert_eq!(Dim { exp: [1, 1, -2, 0, 0, 0, 0, 0] }.to_string(), "m·kg/s²");
+    assert_eq!(Dim { exp: [0, 0, -1, 0, 0, 0, 0, 0] }.to_string(), "1/s");
+    assert_eq!(Dim { exp: [3, 0, 0, 0, 0, 0, 0, 0] }.to_string(), "m³");
+    assert_eq!(Dim { exp: [4, 0, 0, 0, 0, 0, 0, 0] }.to_string(), "m^4");
+    assert_eq!(Dim { exp: [0, 0, 0, 1, -1, 0, 0, 0] }.to_string(), "A/K");
+}
+
+#[test]
+fn mismatch_message_is_readable() {
+    let err = Quantity::new(1.0, Dim::LENGTH).add(Quantity::new(1.0, Dim::MASS)).unwrap_err();
+    assert_eq!(err.to_string(), "can't combine m with kg");
+    let err = Quantity::new(2.0, Dim::LENGTH).powf(0.5).unwrap_err();
+    assert_eq!(err.to_string(), "expected a dimensionless quantity, found m");
+}

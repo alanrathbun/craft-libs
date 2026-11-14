@@ -90,6 +90,49 @@ impl Dim {
         Some(Dim { exp })
     }
 
+    /// The unit text for this dimension: each base dimension written with the matching entry of
+    /// `names`, positive powers first joined by `·`, then `/` and the negative powers (in
+    /// parentheses when there is more than one). `1` when every exponent is zero.
+    ///
+    /// Powers 2 and 3 use `²` and `³`, others `^n`, so the text parses with
+    /// [`parse_unit`](crate::parse_unit) whenever `names` are catalog units.
+    pub(crate) fn compose(self, names: &[&str; 8]) -> String {
+        let factor = |name: &str, e: i8| -> String {
+            match e.unsigned_abs() {
+                1 => name.to_string(),
+                2 => format!("{name}²"),
+                3 => format!("{name}³"),
+                n => format!("{name}^{n}"),
+            }
+        };
+        let mut num: Vec<String> = Vec::new();
+        let mut den: Vec<String> = Vec::new();
+        for (name, e) in names.iter().zip(self.exp.iter()) {
+            match e.signum() {
+                1 => num.push(factor(name, *e)),
+                -1 => den.push(factor(name, *e)),
+                _ => {}
+            }
+        }
+        if num.is_empty() && den.is_empty() {
+            return "1".to_string();
+        }
+        let mut text = if num.is_empty() { "1".to_string() } else { num.join("·") };
+        match den.len() {
+            0 => {}
+            1 => {
+                text.push('/');
+                text.push_str(&den[0]);
+            }
+            _ => {
+                text.push_str("/(");
+                text.push_str(&den.join("·"));
+                text.push(')');
+            }
+        }
+        text
+    }
+
     /// `true` when every exponent but the angle's is zero.
     pub fn is_dimensionless(self) -> bool {
         self.same_ignoring_angle(Dim::ONE)
@@ -98,5 +141,13 @@ impl Dim {
     /// `true` when the two dimensions differ at most in their angle exponent.
     pub fn same_ignoring_angle(self, other: Dim) -> bool {
         self.exp.iter().zip(other.exp.iter()).take(ANGLE_INDEX).all(|(a, b)| a == b)
+    }
+}
+
+impl std::fmt::Display for Dim {
+    /// The SI base-unit composition, such as `kg/(m·s²)`; `1` when dimensionless and `rad` for
+    /// the angle exponent.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.compose(&["m", "kg", "s", "A", "K", "mol", "cd", "rad"]))
     }
 }

@@ -46,11 +46,30 @@ fn add_and_sub_keep_the_left_dimension() {
 }
 
 #[test]
-fn sum_takes_the_left_operands_angle_exponent() {
-    let angle_plus_one = Quantity::new(1.0, Dim::ANGLE).add(Quantity::dimensionless(1.0)).unwrap();
-    assert_eq!(angle_plus_one.dim, Dim::ANGLE);
-    let one_plus_angle = Quantity::dimensionless(1.0).add(Quantity::new(1.0, Dim::ANGLE)).unwrap();
-    assert_eq!(one_plus_angle.dim, Dim::ONE);
+fn sum_and_difference_angle_does_not_depend_on_operand_order() {
+    let rad = Quantity::new(1.0, Dim::ANGLE);
+    let one = Quantity::dimensionless(1.0);
+    assert_eq!(rad.add(one).unwrap().dim, Dim::ANGLE);
+    assert_eq!(one.add(rad).unwrap().dim, Dim::ANGLE);
+    assert_eq!(rad.sub(one).unwrap().dim, Dim::ANGLE);
+    assert_eq!(one.sub(rad).unwrap().dim, Dim::ANGLE);
+    // The non-angle exponents are untouched.
+    let m_rad = Quantity::new(1.0, Dim::LENGTH.mul(Dim::ANGLE).unwrap());
+    let m = Quantity::new(1.0, Dim::LENGTH);
+    let want = Dim::LENGTH.mul(Dim::ANGLE).unwrap();
+    assert_eq!(m.add(m_rad).unwrap().dim, want);
+    assert_eq!(m_rad.add(m).unwrap().dim, want);
+}
+
+#[test]
+fn sum_of_differing_nonzero_angle_exponents_drops_the_angle() {
+    let rad = Quantity::new(1.0, Dim::ANGLE);
+    let rad2 = Quantity::new(1.0, Dim::ANGLE.powi(2).unwrap());
+    assert_eq!(rad.add(rad2).unwrap().dim, Dim::ONE);
+    assert_eq!(rad2.add(rad).unwrap().dim, Dim::ONE);
+    assert_eq!(rad.sub(rad2).unwrap().dim, Dim::ONE);
+    assert_eq!(rad2.sub(rad).unwrap().dim, Dim::ONE);
+    assert_eq!(rad2.add(rad2).unwrap().dim, Dim::ANGLE.powi(2).unwrap());
 }
 
 #[test]
@@ -68,7 +87,7 @@ fn dimension_overflow_in_quantity_is_overflow_error() {
 }
 
 #[test]
-fn non_finite_inputs_and_results_are_rejected() {
+fn non_finite_results_are_rejected() {
     assert_eq!(Quantity::new(f64::MAX, Dim::ONE).add(Quantity::new(f64::MAX, Dim::ONE)), Err(UnitError::NonFinite));
     assert_eq!(Quantity::new(f64::NAN, Dim::ONE).neg(), Err(UnitError::NonFinite));
     assert_eq!(Quantity::dimensionless(-1.0).sqrt(), Err(UnitError::NonFinite));

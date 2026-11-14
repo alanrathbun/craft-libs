@@ -214,8 +214,6 @@ fn trailing_zeros_and_point_trimmed() {
 #[test]
 fn negative_zero_displays_as_zero() {
     assert_eq!(num(-0.0, 3), "0");
-    assert_eq!(num(-0.0004, 3), "0");
-    assert_eq!(num(-0.4, 0), "0");
     assert_eq!(num(-0.0006, 3), "-0.001");
 }
 
@@ -229,10 +227,10 @@ fn decimals_clamped_to_fifteen() {
 
 #[test]
 fn exponential_thresholds() {
-    assert_eq!(num(999_999.0, 3), "999999");
+    assert_eq!(num(999999.0, 3), "999999");
     assert_eq!(num(1.0e6, 3), "1×10^6");
     assert_eq!(num(-1.0e6, 3), "-1×10^6");
-    assert_eq!(num(0.0001, 3), "0");
+    assert_eq!(num(0.0001, 3), "1×10^-4");
     assert_eq!(num(0.00009, 3), "9×10^-5");
     assert_eq!(num(1.5e-5, 3), "1.5×10^-5");
     assert_eq!(num(-1.5e-5, 3), "-1.5×10^-5");
@@ -287,4 +285,35 @@ fn natural_unit_for_extreme_dim_does_not_panic() {
     assert!(!s.text.is_empty());
     let r = format(Quantity::new(1.0, d), None, UnitSystem::UsCustomary, Precision::default());
     assert!(r.is_ok() || r == Err(UnitError::NonFinite));
+}
+
+#[test]
+fn nonzero_value_never_displays_as_zero() {
+    assert_eq!(num(0.0004, 3), "4×10^-4");
+    assert_eq!(num(0.00049, 3), "4.9×10^-4");
+    assert_eq!(num(-0.0004, 3), "-4×10^-4");
+    assert_eq!(num(-0.0001, 3), "-1×10^-4");
+    assert_eq!(num(0.4, 0), "4×10^-1");
+    assert_eq!(num(-0.4, 0), "-4×10^-1");
+    // Rounds to the smallest fixed step, so it stays fixed.
+    assert_eq!(num(0.0005, 3), "0.001");
+    assert_eq!(num(-0.0005, 3), "-0.001");
+    // Exact zero is still `0`.
+    assert_eq!(num(0.0, 3), "0");
+    assert_eq!(num(-0.0, 0), "0");
+}
+
+#[test]
+fn small_value_in_display_unit_is_not_shown_as_zero() {
+    let f = format(Quantity::new(0.0004 * 0.0254, Dim::LENGTH), None, UnitSystem::UsCustomary, Precision::default()).unwrap();
+    assert_eq!((f.number.as_str(), f.unit.as_str()), ("4×10^-4", "in"));
+}
+
+#[test]
+fn fixed_or_exponential_chosen_after_rounding() {
+    assert_eq!(num(999999.9996, 3), "1×10^6");
+    assert_eq!(num(-999999.9996, 3), "-1×10^6");
+    assert_eq!(num(999999.9994, 3), "999999.999");
+    assert_eq!(num(999999.6, 0), "1×10^6");
+    assert_eq!(num(999999.4, 0), "999999");
 }

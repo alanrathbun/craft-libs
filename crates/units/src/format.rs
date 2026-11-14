@@ -154,9 +154,14 @@ pub fn format(q: Quantity, unit: Option<&Scale>, sys: UnitSystem, p: Precision) 
 
 /// `x` (finite) as text with at most `decimals` places, trimmed, in exponential form when large
 /// or small.
+///
+/// The choice is made on the value as it would print in fixed form: one that rounds up to `1e6`
+/// is large, and a non-zero one that rounds to zero is small, so a non-zero value never shows
+/// as `0`.
 fn number_text(x: f64, decimals: u8) -> String {
     let magnitude = x.abs();
-    let wants_exponential = magnitude >= EXP_HIGH || (magnitude > 0.0 && magnitude < EXP_LOW);
+    let rounded = (magnitude * 10f64.powi(i32::from(decimals))).round() / 10f64.powi(i32::from(decimals));
+    let wants_exponential = rounded >= EXP_HIGH || (magnitude > 0.0 && (magnitude < EXP_LOW || rounded == 0.0));
     wants_exponential.then(|| exponential(x, decimals)).flatten().unwrap_or_else(|| fixed(x, decimals))
 }
 

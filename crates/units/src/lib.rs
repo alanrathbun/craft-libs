@@ -10,8 +10,12 @@
 //! The crate knows nothing about any application's types, so it can sit under a word processor's
 //! inline calculations or a spreadsheet's cell formulas alike.
 
+mod catalog;
 mod dim;
+mod parse;
 mod quantity;
 
+pub use catalog::{CATALOG, Scale, UnitDef, lookup};
 pub use dim::Dim;
+pub use parse::parse_unit;
 pub use quantity::{Quantity, UnitError};

@@ -192,10 +192,9 @@ fn natural_unit_ignores_angle_exponent_on_table_match() {
 
 #[test]
 fn rounding_is_half_away_from_zero() {
-    assert_eq!(num(0.5, 0), "1");
     assert_eq!(num(1.5, 0), "2");
     assert_eq!(num(2.5, 0), "3");
-    assert_eq!(num(-0.5, 0), "-1");
+    assert_eq!(num(-1.5, 0), "-2");
     assert_eq!(num(-2.5, 0), "-3");
     assert_eq!(num(0.125, 2), "0.13");
     assert_eq!(num(-0.125, 2), "-0.13");
@@ -214,7 +213,8 @@ fn trailing_zeros_and_point_trimmed() {
 #[test]
 fn negative_zero_displays_as_zero() {
     assert_eq!(num(-0.0, 3), "0");
-    assert_eq!(num(-0.0006, 3), "-0.001");
+    assert_eq!(num(-0.0006, 3), "-6×10^-4");
+    assert_eq!(num(-0.006, 2), "-6×10^-3");
 }
 
 #[test]
@@ -295,9 +295,9 @@ fn nonzero_value_never_displays_as_zero() {
     assert_eq!(num(-0.0001, 3), "-1×10^-4");
     assert_eq!(num(0.4, 0), "4×10^-1");
     assert_eq!(num(-0.4, 0), "-4×10^-1");
-    // Rounds to the smallest fixed step, so it stays fixed.
-    assert_eq!(num(0.0005, 3), "0.001");
-    assert_eq!(num(-0.0005, 3), "-0.001");
+    // Would round to the smallest fixed step, one digit that isn't the value's.
+    assert_eq!(num(0.0005, 3), "5×10^-4");
+    assert_eq!(num(-0.0005, 3), "-5×10^-4");
     // Exact zero is still `0`.
     assert_eq!(num(0.0, 3), "0");
     assert_eq!(num(-0.0, 0), "0");
@@ -316,4 +316,27 @@ fn fixed_or_exponential_chosen_after_rounding() {
     assert_eq!(num(999999.9994, 3), "999999.999");
     assert_eq!(num(999999.6, 0), "1×10^6");
     assert_eq!(num(999999.4, 0), "999999");
+}
+
+#[test]
+fn small_values_keep_two_significant_digits() {
+    // At 3 places fixed form keeps two digits from 0.01 up.
+    assert_eq!(num(0.0099, 3), "9.9×10^-3");
+    assert_eq!(num(0.00123, 3), "1.23×10^-3");
+    assert_eq!(num(0.005, 3), "5×10^-3");
+    assert_eq!(num(0.01, 3), "0.01");
+    assert_eq!(num(0.0123, 3), "0.012");
+    assert_eq!(num(-0.0099, 3), "-9.9×10^-3");
+    // The threshold follows the precision.
+    assert_eq!(num(0.05, 2), "5×10^-2");
+    assert_eq!(num(0.1, 2), "0.1");
+    assert_eq!(num(0.0005, 5), "0.0005");
+    assert_eq!(num(0.00005, 6), "5×10^-5");
+    // At 0 or 1 places only values below 1 switch: 5 stays 5.
+    assert_eq!(num(5.0, 0), "5");
+    assert_eq!(num(0.6, 0), "6×10^-1");
+    assert_eq!(num(0.53, 1), "5.3×10^-1");
+    assert_eq!(num(1.0, 1), "1");
+    // Large values are unchanged.
+    assert_eq!(num(123.456, 3), "123.456");
 }

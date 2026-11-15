@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 const MAX_DECIMALS: u8 = 15;
 /// Magnitudes at or above this show in exponential form.
 const EXP_HIGH: f64 = 1e6;
-/// Non-zero magnitudes below this show in exponential form.
+/// Non-zero magnitudes below this always show in exponential form.
 const EXP_LOW: f64 = 1e-4;
 /// Index of the angle exponent in [`Dim::exp`].
 const ANGLE: usize = 7;
@@ -128,9 +128,11 @@ fn composed(dim: Dim, sys: UnitSystem) -> Scale {
 /// With `unit` the magnitude is converted to it; its dimension must match `q`'s apart from the
 /// angle exponent, else [`UnitError::Mismatch`]. Without one the [`natural_unit`] for `sys` is
 /// used. `p` sets the decimal places (clamped to 15): rounding is half away from zero, trailing
-/// zeros and a trailing `.` are dropped, and `-0` shows as `0`. A magnitude of at least `1e6`, or
-/// non-zero and below `1e-4`, shows as `6×10^6` or `1.5×10^-5`, its mantissa rounded the same
-/// way. A non-finite `q`, or a conversion that overflows, is [`UnitError::NonFinite`].
+/// zeros and a trailing `.` are dropped, and `-0` shows as `0`. A magnitude of at least `1e6`
+/// shows as `6×10^6`; a non-zero one too small to keep two significant digits in fixed form
+/// (below `10^(1−decimals)`, at most 1 and at least `1e-4`) shows as `1.5×10^-5`, its mantissa
+/// rounded the same way. A non-finite `q`, or a conversion that overflows, is
+/// [`UnitError::NonFinite`].
 pub fn format(q: Quantity, unit: Option<&Scale>, sys: UnitSystem, p: Precision) -> Result<Formatted, UnitError> {
     let natural;
     let scale = match unit {
@@ -155,14 +157,22 @@ pub fn format(q: Quantity, unit: Option<&Scale>, sys: UnitSystem, p: Precision) 
 /// `x` (finite) as text with at most `decimals` places, trimmed, in exponential form when large
 /// or small.
 ///
-/// The choice is made on the value as it would print in fixed form: one that rounds up to `1e6`
-/// is large, and a non-zero one that rounds to zero is small, so a non-zero value never shows
-/// as `0`.
+/// Large is decided on the value as it would print in fixed form (one that rounds up to `1e6`).
+/// Small is a non-zero value below [`small_below`], which fixed form would show with fewer than
+/// two significant digits (`0.0005` at 3 places is `0.001`, so it shows as `5×10^-4`); and a
+/// non-zero value that rounds to zero is always small, so a non-zero value never shows as `0`.
 fn number_text(x: f64, decimals: u8) -> String {
     let magnitude = x.abs();
     let rounded = (magnitude * 10f64.powi(i32::from(decimals))).round() / 10f64.powi(i32::from(decimals));
-    let wants_exponential = rounded >= EXP_HIGH || (magnitude > 0.0 && (magnitude < EXP_LOW || rounded == 0.0));
+    let wants_exponential = rounded >= EXP_HIGH || (magnitude > 0.0 && (magnitude < small_below(decimals) || rounded == 0.0));
     wants_exponential.then(|| exponential(x, decimals)).flatten().unwrap_or_else(|| fixed(x, decimals))
+}
+
+/// Magnitudes below this show in exponential form at `decimals` places: `10^(1−decimals)`, the
+/// smallest value fixed form shows with two significant digits, kept between [`EXP_LOW`] and 1
+/// (at 0 or 1 places a value of 1 or more shows as it is).
+fn small_below(decimals: u8) -> f64 {
+    10f64.powi(1 - i32::from(decimals)).clamp(EXP_LOW, 1.0)
 }
 
 /// Fixed-point text, rounded half away from zero and trimmed. `-0` gives `0`.

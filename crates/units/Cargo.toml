@@ -1,0 +1,18 @@
+[package]
+name = "craft-units"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Physical dimensions and unit-aware quantity arithmetic for the Craft suite"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest = "1.4"

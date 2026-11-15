@@ -83,6 +83,8 @@ pub static CATALOG: &[UnitDef] = &[
     // SI base and derived
     unit(&["m"], LENGTH, 1.0, true),
     unit(&["g"], MASS, 1e-3, true),
+    // Mathcad's spelling of the gram (where g is gravity); no prefixes: kg is the kilogram.
+    unit(&["gm"], MASS, 1e-3, false),
     unit(&["s"], TIME, 1.0, true),
     unit(&["A"], Dim::CURRENT, 1.0, true),
     unit(&["K"], Dim::TEMPERATURE, 1.0, true),

@@ -291,3 +291,12 @@ mod never_panics {
         }
     }
 }
+
+#[test]
+fn gm_is_mathcads_gram() {
+    let gm = parse_unit("gm").unwrap();
+    let g = parse_unit("g").unwrap();
+    assert_eq!((gm.dim, gm.factor), (g.dim, g.factor));
+    assert_eq!(parse_unit("gm/cm^3").unwrap().dim, parse_unit("g/cm^3").unwrap().dim);
+    assert!(parse_unit("kgm").is_err(), "gm takes no prefix: kg is the kilogram");
+}

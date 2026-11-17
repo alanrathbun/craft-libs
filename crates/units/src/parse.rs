@@ -92,6 +92,8 @@ fn tokenize(input: &str) -> Result<Vec<Tok>, UnitError> {
                 }
                 toks.push(Tok::Sup(if negative { -n } else { n }));
             }
+            // A unit of its own: it never joins the letters around it.
+            '%' => toks.push(Tok::Ident("%".to_string())),
             c if is_ident_char(c) => {
                 let mut name = String::from(c);
                 while let Some(n) = chars.next_if(|&n| is_ident_char(n)) {

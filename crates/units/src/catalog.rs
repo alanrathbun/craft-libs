@@ -56,6 +56,14 @@ const BTU: f64 = 1055.05585262;
 const HP: f64 = 550.0 * FT * LBF;
 /// US liquid gallon, in cubic metres.
 const GAL: f64 = 0.003785411784;
+/// Standard atmosphere, in pascals.
+const ATM: f64 = 101325.0;
+/// Standard gravity, in m/s²: the kilogram-force is this many newtons.
+const G0: f64 = 9.80665;
+/// International Table calorie, in joules.
+const CAL: f64 = 4.1868;
+/// Tropical year, in days (Mathcad's `yr`).
+const YEAR_DAYS: f64 = 365.2422;
 const DEG: f64 = std::f64::consts::PI / 180.0;
 const RANKINE: f64 = 5.0 / 9.0;
 
@@ -69,6 +77,13 @@ const ENERGY: Dim = Dim { exp: [2, 1, -2, 0, 0, 0, 0, 0] };
 const POWER: Dim = Dim { exp: [2, 1, -3, 0, 0, 0, 0, 0] };
 const FREQUENCY: Dim = Dim { exp: [0, 0, -1, 0, 0, 0, 0, 0] };
 const VOLUME: Dim = Dim { exp: [3, 0, 0, 0, 0, 0, 0, 0] };
+const VOLUME_FLOW: Dim = Dim { exp: [3, 0, -1, 0, 0, 0, 0, 0] };
+const SPEED: Dim = Dim { exp: [1, 0, -1, 0, 0, 0, 0, 0] };
+const VISCOSITY: Dim = Dim { exp: [-1, 1, -1, 0, 0, 0, 0, 0] };
+/// Force per length, as in pounds per linear foot.
+const LINE_LOAD: Dim = Dim { exp: [0, 1, -2, 0, 0, 0, 0, 0] };
+/// Force per volume, as in pounds per cubic foot.
+const UNIT_WEIGHT: Dim = Dim { exp: [-2, 1, -2, 0, 0, 0, 0, 0] };
 
 const fn unit(names: &'static [&'static str], dim: Dim, factor: f64, prefixable: bool) -> UnitDef {
     UnitDef { names, dim, factor, offset: 0.0, prefixable }
@@ -86,20 +101,41 @@ pub static CATALOG: &[UnitDef] = &[
     // Mathcad's spelling of the gram (where g is gravity); no prefixes: kg is the kilogram.
     unit(&["gm"], MASS, 1e-3, false),
     unit(&["s"], TIME, 1.0, true),
+    // Mathcad's long spellings; no prefixes: the symbols are the prefixable ones.
+    unit(&["sec"], TIME, 1.0, false),
     unit(&["A"], Dim::CURRENT, 1.0, true),
     unit(&["K"], Dim::TEMPERATURE, 1.0, true),
-    unit(&["mol"], Dim::AMOUNT, 1.0, true),
+    unit(&["mol", "mole"], Dim::AMOUNT, 1.0, true),
     unit(&["cd"], Dim::LUMINOSITY, 1.0, true),
     unit(&["rad"], Dim::ANGLE, 1.0, true),
     unit(&["deg", "°"], Dim::ANGLE, DEG, false),
     unit(&["N"], FORCE, 1.0, true),
     unit(&["Pa"], PRESSURE, 1.0, true),
     unit(&["J"], ENERGY, 1.0, true),
+    unit(&["joule"], ENERGY, 1.0, false),
     unit(&["W"], POWER, 1.0, true),
+    unit(&["watt"], POWER, 1.0, false),
     unit(&["Hz"], FREQUENCY, 1.0, true),
     unit(&["L"], VOLUME, 1e-3, true),
+    unit(&["liter"], VOLUME, 1e-3, false),
     unit(&["min"], TIME, 60.0, false),
-    unit(&["h"], TIME, 3600.0, false),
+    unit(&["hr"], TIME, 3600.0, false),
+    unit(&["day"], TIME, 86400.0, false),
+    unit(&["yr"], TIME, YEAR_DAYS * 86400.0, false),
+    unit(&["Å", "Angstrom"], LENGTH, 1e-10, false),
+    unit(&["atm"], PRESSURE, ATM, false),
+    // No prefixes, so ubar, Mbar and the like stay free as names: the millibar and kilobar are
+    // units of their own.
+    unit(&["bar"], PRESSURE, 1e5, false),
+    unit(&["mbar"], PRESSURE, 100.0, false),
+    unit(&["kbar"], PRESSURE, 1e8, false),
+    unit(&["torr"], PRESSURE, ATM / 760.0, false),
+    unit(&["poise"], VISCOSITY, 0.1, false),
+    unit(&["cP"], VISCOSITY, 1e-3, false),
+    unit(&["%"], Dim::ONE, 0.01, false),
+    unit(&["kgf"], FORCE, G0, false),
+    unit(&["tonne"], MASS, 1000.0, false),
+    unit(&["cal"], ENERGY, CAL, true),
     // US customary
     unit(&["in"], LENGTH, IN, false),
     unit(&["ft"], LENGTH, FT, false),
@@ -113,9 +149,16 @@ pub static CATALOG: &[UnitDef] = &[
     unit(&["psi"], PRESSURE, PSI, false),
     unit(&["ksi"], PRESSURE, 1000.0 * PSI, false),
     unit(&["psf"], PRESSURE, LBF / (FT * FT), false),
-    unit(&["BTU"], ENERGY, BTU, false),
+    unit(&["BTU", "Btu"], ENERGY, BTU, false),
     unit(&["hp"], POWER, HP, false),
     unit(&["gal"], VOLUME, GAL, false),
+    unit(&["ton"], MASS, 2000.0 * LBM, false),
+    unit(&["ksf"], PRESSURE, 1000.0 * LBF / (FT * FT), false),
+    unit(&["plf"], LINE_LOAD, LBF / FT, false),
+    unit(&["pcf"], UNIT_WEIGHT, LBF / (FT * FT * FT), false),
+    unit(&["gpm"], VOLUME_FLOW, GAL / 60.0, false),
+    unit(&["cfm"], VOLUME_FLOW, FT * FT * FT / 60.0, false),
+    unit(&["mph"], SPEED, MI / 3600.0, false),
     // Temperature: absolute scales, offset scales (lone use only), and differences.
     unit(&["°R"], Dim::TEMPERATURE, RANKINE, false),
     offset_unit(&["°C"], Dim::TEMPERATURE, 1.0, 273.15),

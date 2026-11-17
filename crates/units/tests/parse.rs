@@ -393,9 +393,22 @@ fn long_spellings_take_no_prefix() {
     for n in ["msec", "kliter", "kwatt", "kjoule", "kBtu", "kAngstrom", "mhr", "katm", "kpsi"] {
         assert_eq!(lookup(n), None, "{n}");
     }
-    // The symbols stay prefixable, and bar and cal take prefixes.
-    for (n, v) in [("kJ", 1e3), ("kW", 1e3), ("mL", 1e-6), ("kbar", 1e8), ("mcal", 4.1868e-3)] {
+    // The symbols stay prefixable, and cal takes prefixes.
+    for (n, v) in [("kJ", 1e3), ("kW", 1e3), ("mL", 1e-6), ("mcal", 4.1868e-3)] {
         assert!(close(lookup(n).unwrap().factor, v), "{n}");
+    }
+}
+
+#[test]
+fn bar_takes_no_prefix_but_mbar_and_kbar_are_units() {
+    // Prefixing bar would reserve plausible names (ubar, cbar, nbar, Mbar, µbar): only the
+    // millibar and kilobar are units, as names of their own.
+    for (n, v) in [("bar", 1e5), ("mbar", 100.0), ("kbar", 1e8)] {
+        assert!(close(lookup(n).unwrap().factor, v), "{n}");
+        assert_eq!(dim_of(n), [-1, 1, -2, 0, 0, 0, 0, 0], "{n}");
+    }
+    for n in ["ubar", "µbar", "μbar", "cbar", "nbar", "Mbar", "Gbar"] {
+        assert_eq!(lookup(n), None, "{n}");
     }
 }
 

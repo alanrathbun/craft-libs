@@ -124,7 +124,11 @@ pub static CATALOG: &[UnitDef] = &[
     unit(&["yr"], TIME, YEAR_DAYS * 86400.0, false),
     unit(&["Å", "Angstrom"], LENGTH, 1e-10, false),
     unit(&["atm"], PRESSURE, ATM, false),
-    unit(&["bar"], PRESSURE, 1e5, true),
+    // No prefixes, so ubar, Mbar and the like stay free as names: the millibar and kilobar are
+    // units of their own.
+    unit(&["bar"], PRESSURE, 1e5, false),
+    unit(&["mbar"], PRESSURE, 100.0, false),
+    unit(&["kbar"], PRESSURE, 1e8, false),
     unit(&["torr"], PRESSURE, ATM / 760.0, false),
     unit(&["poise"], VISCOSITY, 0.1, false),
     unit(&["cP"], VISCOSITY, 1e-3, false),

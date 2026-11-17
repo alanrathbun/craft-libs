@@ -63,8 +63,8 @@ pub struct Formatted {
 /// Names of the base units of each system, in [`Dim::exp`] order.
 fn base_names(sys: UnitSystem) -> [&'static str; 8] {
     match sys {
-        UnitSystem::UsCustomary => ["in", "lbm", "s", "A", "°R", "mol", "cd", "rad"],
-        UnitSystem::Si => ["m", "kg", "s", "A", "K", "mol", "cd", "rad"],
+        UnitSystem::UsCustomary => ["in", "lbm", "sec", "A", "°R", "mol", "cd", "rad"],
+        UnitSystem::Si => ["m", "kg", "sec", "A", "K", "mol", "cd", "rad"],
     }
 }
 
@@ -76,9 +76,9 @@ fn scale_for(text: &str, dim: Dim) -> Scale {
 
 /// The unit a quantity of dimension `dim` shows in when the author names none.
 ///
-/// The angle exponent is ignored when matching the table (so `N·m` shows as `J`), except that
+/// The angle exponent is ignored when matching the table (so `N·m` shows as `joule`), except that
 /// a pure angle is `rad` (SI) or `deg` (US customary). A dimension the table lacks is written
-/// in base units, such as `lbm/(in·s)` or `m/s²`, with `rad` included when the angle exponent
+/// in base units, such as `lbm/(in·sec)` or `m/sec²`, with `rad` included when the angle exponent
 /// is not zero. The text parses with [`parse_unit`].
 pub fn natural_unit(dim: Dim, sys: UnitSystem) -> Scale {
     let us = sys == UnitSystem::UsCustomary;
@@ -98,9 +98,9 @@ pub fn natural_unit(dim: Dim, sys: UnitSystem) -> Scale {
         [0, 1, 0, 0, 0, 0, 0, 0] => Some(("lbm", "kg")),
         [1, 1, -2, 0, 0, 0, 0, 0] => Some(("lbf", "N")),
         [-1, 1, -2, 0, 0, 0, 0, 0] => Some(("psi", "Pa")),
-        [2, 1, -2, 0, 0, 0, 0, 0] => Some(("lbf·in", "J")),
-        [2, 1, -3, 0, 0, 0, 0, 0] => Some(("hp", "W")),
-        [0, 0, 1, 0, 0, 0, 0, 0] => Some(("s", "s")),
+        [2, 1, -2, 0, 0, 0, 0, 0] => Some(("lbf·in", "joule")),
+        [2, 1, -3, 0, 0, 0, 0, 0] => Some(("hp", "watt")),
+        [0, 0, 1, 0, 0, 0, 0, 0] => Some(("sec", "sec")),
         [0, 0, 0, 0, 1, 0, 0, 0] => Some(("°R", "K")),
         _ => None,
     };

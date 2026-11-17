@@ -55,8 +55,8 @@ fn wrong_display_unit_is_mismatch() {
 #[test]
 fn fallback_composition() {
     let d = Dim::MASS.div(Dim::LENGTH.mul(Dim::TIME).unwrap()).unwrap();
-    assert_eq!(natural_unit(d, UnitSystem::UsCustomary).text, "lbm/(in·s)");
-    assert_eq!(natural_unit(d, UnitSystem::Si).text, "kg/(m·s)");
+    assert_eq!(natural_unit(d, UnitSystem::UsCustomary).text, "lbm/(in·sec)");
+    assert_eq!(natural_unit(d, UnitSystem::Si).text, "kg/(m·sec)");
 }
 
 #[test]
@@ -121,9 +121,9 @@ fn natural_table_texts() {
         (Dim::MASS, "lbm", "kg"),
         (Dim { exp: [1, 1, -2, 0, 0, 0, 0, 0] }, "lbf", "N"),
         (Dim { exp: [-1, 1, -2, 0, 0, 0, 0, 0] }, "psi", "Pa"),
-        (Dim { exp: [2, 1, -2, 0, 0, 0, 0, 0] }, "lbf·in", "J"),
-        (Dim { exp: [2, 1, -3, 0, 0, 0, 0, 0] }, "hp", "W"),
-        (Dim::TIME, "s", "s"),
+        (Dim { exp: [2, 1, -2, 0, 0, 0, 0, 0] }, "lbf·in", "joule"),
+        (Dim { exp: [2, 1, -3, 0, 0, 0, 0, 0] }, "hp", "watt"),
+        (Dim::TIME, "sec", "sec"),
         (Dim::TEMPERATURE, "°R", "K"),
         (Dim::ONE, "", ""),
     ];
@@ -136,20 +136,20 @@ fn natural_table_texts() {
 #[test]
 fn fallback_powers_and_ordering() {
     let accel = Dim { exp: [1, 0, -2, 0, 0, 0, 0, 0] };
-    assert_eq!(natural_unit(accel, UnitSystem::Si).text, "m/s²");
-    assert_eq!(natural_unit(accel, UnitSystem::UsCustomary).text, "in/s²");
+    assert_eq!(natural_unit(accel, UnitSystem::Si).text, "m/sec²");
+    assert_eq!(natural_unit(accel, UnitSystem::UsCustomary).text, "in/sec²");
     let freq = Dim { exp: [0, 0, -1, 0, 0, 0, 0, 0] };
-    assert_eq!(natural_unit(freq, UnitSystem::Si).text, "1/s");
+    assert_eq!(natural_unit(freq, UnitSystem::Si).text, "1/sec");
     let density = Dim { exp: [-3, 1, 0, 0, 0, 0, 0, 0] };
     assert_eq!(natural_unit(density, UnitSystem::UsCustomary).text, "lbm/in³");
     let l4 = Dim { exp: [4, 0, 0, 0, 0, 0, 0, 0] };
     assert_eq!(natural_unit(l4, UnitSystem::Si).text, "m^4");
     let rate = Dim { exp: [0, 0, -1, 0, 0, 0, 0, 1] };
-    assert_eq!(natural_unit(rate, UnitSystem::Si).text, "rad/s");
+    assert_eq!(natural_unit(rate, UnitSystem::Si).text, "rad/sec");
     let many = Dim { exp: [1, 1, 0, 1, -1, -1, 0, 0] };
     assert_eq!(natural_unit(many, UnitSystem::Si).text, "m·kg·A/(K·mol)");
     let high = Dim { exp: [0, 0, -12, 0, 0, 0, 0, 0] };
-    assert_eq!(natural_unit(high, UnitSystem::Si).text, "1/s^12");
+    assert_eq!(natural_unit(high, UnitSystem::Si).text, "1/sec^12");
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn angle_counts_like_dimensionless_for_explicit_units() {
 #[test]
 fn natural_unit_ignores_angle_exponent_on_table_match() {
     let with_angle = Dim { exp: [2, 1, -2, 0, 0, 0, 0, 1] };
-    assert_eq!(natural_unit(with_angle, UnitSystem::Si).text, "J");
+    assert_eq!(natural_unit(with_angle, UnitSystem::Si).text, "joule");
 }
 
 #[test]
@@ -339,4 +339,39 @@ fn small_values_keep_two_significant_digits() {
     assert_eq!(num(1.0, 1), "1");
     // Large values are unchanged.
     assert_eq!(num(123.456, 3), "123.456");
+}
+
+#[test]
+fn pcf_is_force_per_cubic_foot() {
+    let pcf = parse_unit("pcf").unwrap();
+    let ft = parse_unit("ft").unwrap();
+    // 150 pcf · 0.25 ft = 37.5 psf (Stwy 1st to Mezz.xmcd)
+    let load = Quantity::new(150.0 * pcf.factor, pcf.dim).mul(Quantity::new(0.25 * ft.factor, ft.dim)).unwrap();
+    let psf = parse_unit("psf").unwrap();
+    assert_eq!(load.dim, psf.dim);
+    let shown = format(load, Some(&psf), UnitSystem::UsCustomary, Precision::default()).unwrap();
+    assert_eq!((shown.number.as_str(), shown.unit.as_str()), ("37.5", "psf"));
+    // 490 pcf = 76.97285728466062 kN/m³ (Shielded Transfer Cart.xmcd)
+    let steel = Quantity::new(490.0 * pcf.factor, pcf.dim);
+    let kn_m3 = parse_unit("kN/m^3").unwrap();
+    let shown = steel.value / kn_m3.factor;
+    assert!((shown - 76.97285728466062).abs() <= 1e-12 * 76.97285728466062, "{shown}");
+    let f = format(steel, Some(&kn_m3), UnitSystem::Si, Precision::new(5)).unwrap();
+    assert_eq!((f.number.as_str(), f.unit.as_str()), ("76.97286", "kN/m^3"));
+}
+
+#[test]
+fn results_use_the_users_spellings() {
+    assert_eq!(natural_unit(Dim::TIME, UnitSystem::UsCustomary).text, "sec");
+    assert_eq!(natural_unit(Dim::TIME, UnitSystem::Si).text, "sec");
+    let energy = Dim { exp: [2, 1, -2, 0, 0, 0, 0, 0] };
+    let power = Dim { exp: [2, 1, -3, 0, 0, 0, 0, 0] };
+    assert_eq!(natural_unit(energy, UnitSystem::Si).text, "joule");
+    assert_eq!(natural_unit(power, UnitSystem::Si).text, "watt");
+    assert_eq!(natural_unit(energy, UnitSystem::UsCustomary).text, "lbf·in");
+    assert_eq!(natural_unit(power, UnitSystem::UsCustomary).text, "hp");
+    let accel = Dim { exp: [1, 0, -2, 0, 0, 0, 0, 0] };
+    assert_eq!(natural_unit(accel, UnitSystem::Si).text, "m/sec²");
+    let f = format(Quantity::new(2.5, Dim::TIME), None, UnitSystem::Si, Precision::default()).unwrap();
+    assert_eq!((f.number.as_str(), f.unit.as_str()), ("2.5", "sec"));
 }
